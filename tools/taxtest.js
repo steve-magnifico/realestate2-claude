@@ -1,0 +1,40 @@
+const vm=require('vm'),fs=require('fs');
+const code=fs.readFileSync(require('path').join(__dirname,'../src/world.js'),'utf8')+'\n'+fs.readFileSync(require('path').join(__dirname,'../src/econ.js'),'utf8')+`
+;globalThis.T={genWorld,REAL,hashStr,progTax,acqCalc,cgtCalc,holdAssess,buyCalc,sellCalc,newState,PBY,POL,regTax,
+ set(s,w){S=s;W=w}, get S(){return S}, get W(){return W}};`;
+const ctx={console,module:{},document:{getElementById(){return null}},Math,Object,Infinity};ctx.globalThis=ctx;
+ctx.toast=()=>{};ctx.refreshAll=()=>{};
+vm.createContext(ctx);vm.runInContext(code,ctx);const T=ctx.T;
+const man=x=>Math.round(x*10000).toLocaleString()+'만';
+console.log('① 국세청 사례(양도가 20억·취득가 10억·15년): 기대 2억5,701만 / 5억8,251만 / 6억8,226만');
+console.log('   계산:',man(T.progTax(6.975)),man(T.progTax(9.975,20)),man(T.progTax(9.975,30)));
+const W=T.genWorld(T.hashStr('검증'),T.REAL);const S=T.newState({name:'t',seedStr:'검증',seed:W.seed,init:T.REAL,mode:'std'});T.set(S,W);
+// 가격을 고정해 손계산과 비교
+for(const id in W.price)for(let t=0;t<=40;t++)W.price[id][t]=T.PBY[id].p0;
+for(let t=0;t<=40;t++)W.stance[t]=0;
+console.log('② 취득세');
+let a=T.acqCalc('A3',7.5);console.log('   7.5억 1주택: 세율',a.rate.toFixed(2)+'% 본세',man(a.main),'지방교육세',man(a.sur),'(기대 2.00% 1,500만 + 150만)');
+a=T.acqCalc('A1',14);console.log('   14억 1주택:',a.rate+'%',man(a.tax),'(기대 3% + 0.3% = 4,620만)');
+S.own.A3={buyQ:0,basis:7.1,loan:0};a=T.acqCalc('A2',9.5);console.log('   2주택째 9.5억:',a.rate+'%',man(a.tax),'(기대 8.4% = 7,980만)');
+S.own.A2={buyQ:0,basis:9.9,loan:0};a=T.acqCalc('A4',5.2);console.log('   3주택째 5.2억:',a.rate+'%',man(a.tax),'(기대 12.4% = 6,448만)');
+a=T.acqCalc('O1',28);console.log('   오피스 28억:',man(a.tax),'(기대 4.6% = 1억2,880만)');a=T.acqCalc('L1',3);console.log('   농지 3억:',man(a.tax),'(기대 3.4% = 1,020만)');
+console.log('   근저당 등록면허세, 대출 5억:',man(T.regTax(5)),'(기대 5억×120%×0.24% = 144만)');
+console.log('③ 양도소득세 (A3: 취득가액 7.1억, 양도가 10억, 중개보수 0.5%=500만 → 차익 2.85억)');
+const run=(label,setup,exp)=>{S.own={A3:{buyQ:0,basis:7.1,loan:0,liveQ:0}};S.dedYear=0;setup();const c=T.cgtCalc('A3',10,0.05,S.q);console.log('   '+label+':',c.label,'| 과표',man(c.base),'| 양도세',man(c.tax),'+ 지방세',man(c.local),exp?'(기대 '+exp+')':'');};
+run('보유 3분기·1주택',()=>{S.q=3},'(2.85억-250만)×70% = 1억9,775만');
+run('보유 6분기·1주택',()=>{S.q=6},'2.825억×60% = 1억6,950만');
+run('보유 9분기·1주택·미거주',()=>{S.q=9},'2.825억×38%-1,994만 = 8,741만');
+run('보유 13분기(3년)·1주택·미거주',()=>{S.q=13},'장특공 6% → 과표 2.654억 ×38%-1,994만 = 8,091만');
+run('보유 9분기·1주택·실거주 9분기',()=>{S.q=9;S.own.A3.liveQ=9},'비과세');
+run('보유 9분기·2주택',()=>{S.q=9;S.own.A2={buyQ:0,basis:9.9,loan:0}},'2.825억×58%-1,994만 = 1억4,391만');
+run('보유 9분기·3주택',()=>{S.q=9;S.own.A2={buyQ:0,basis:9.9,loan:0};S.own.A4={buyQ:0,basis:5.5,loan:0}},'2.825억×68%-1,994만 = 1억7,216만');
+S.own={A1:{buyQ:0,basis:10,loan:0,liveQ:20}};S.q=20;S.dedYear=0;let c=T.cgtCalc('A1',20,0.14,20);
+console.log('   고가 1주택(취득 10억→양도 20억, 5년 보유·거주): 과세차익',man(c.gain-c.exempt),'장특공',(c.ltdRate*100)+'%','과표',man(c.base),'양도세',man(c.tax),'(기대 차익 9.86억×8/20=3.944억, 장특공 40% → 과표 2.3414억, 세액 6,903만)');
+S.own={L2:{buyQ:0,basis:6.8,loan:0}};S.q=9;S.dedYear=0;c=T.cgtCalc('L2',9,0.081,9);console.log('   비사업용 토지(차익 2.119억, 9분기):',c.label,man(c.tax),'(기대 (2.119-0.025)억×48%-1,994만 = 8,057만)');
+S.own={O1:{buyQ:0,basis:29.5,loan:0}};S.q=5;S.dedYear=0;c=T.cgtCalc('O1',32,0.288,5);console.log('   오피스 5분기 보유(차익 2.212억):',c.label,man(c.tax),'(기대 2.187억×40% = 8,748만)');
+console.log('④ 보유세');
+const fake=(o)=>{const own={};for(const k in o){own[k]={};W.price[k].fill(o[k]);}return T.holdAssess(1,own,T.POL[0]);};
+let h=fake({A1:15/.69});console.log('   공시가 15억 1주택: 재산세',man(h.prop),'종부세',man(h.jb),'(종부세 기대: (15-12)×60%=1.8억×0.5%=90만, 재산세 중복분 43만 차감 → 47만, 농특세 포함 56만)');
+h=fake({A1:14,A2:9.5,A3:7,A4:5.2});console.log('   아파트 4채(시세 35.7억, 공시 24.63억): 재산세',man(h.prop),'종부세',man(h.jb),'(종부세 기대: (24.633-9)×60%=9.38억 ×1%-240만=698만, -중복 225만=473만, ×1.2=567만)');
+h=fake({L2:6.5,L3:9});console.log('   나대지 2필지(공시 10.075억): 재산세',man(h.prop),'종부세',man(h.jb),'(종부세 기대: 5.075억×1%=507.5만 -중복 177.6만 = 329.9만 ×1.2 = 396만)');
+h=fake({O2:46});console.log('   오피스 46억: 재산세',man(h.prop),'종부세',man(h.jb),'(별도합산 80억 공제 → 종부세 0)');
