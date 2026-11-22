@@ -4,7 +4,11 @@
 
 ## 바로 실행
 
-`dist/index.html`을 브라우저로 연다. 설치할 것은 없다.
+https://steve-magnifico.github.io/realestate2-claude/
+
+내려받아 실행하려면 `dist/index.html`을 브라우저로 연다. 설치할 것은 없다.
+
+`main` 브랜치의 `dist/index.html`이 위 주소로 배포된다. 소스를 고친 뒤에는 아래 순서로 다시 만들어 함께 커밋한다.
 
 ## 고친 뒤 다시 만들기
 
