@@ -1,6 +1,6 @@
 'use strict';
 /* ===== 시장 세계 생성기: 시드가 같으면 금리·환율·시세·뉴스가 모두 같다 ===== */
-const REAL = { asOf: '2026.11.18', rate: 3.00, fx: 1333.0, us: 4.00 };
+const REAL = { asOf: '2026.11.26', rate: 3.25, fx: 1342.7, us: 4.00 };
 const TYPES = ['land', 'apt', 'office', 'factory'];
 const TKO = { land: '토지', apt: '아파트', office: '오피스', factory: '공장' };
 
